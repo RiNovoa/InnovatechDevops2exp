@@ -54,10 +54,16 @@ services:
       - academia-net
     restart: unless-stopped
 
-  # Frontend lo agregaremos después
-  # frontend:
-  #   build: ./frontend
-  #   ...
+  frontend:
+    build: ./front_despacho   # o la ruta real donde está el frontend
+    image: innovatech-frontend:1.0
+    ports:
+      - "3000:80"
+    depends_on:
+      - back-despachos
+      - back-ventas
+    networks:
+      - academia-net
 
 volumes:
   mysql_data:
@@ -66,3 +72,5 @@ volumes:
 networks:
   academia-net:
     driver: bridge
+
+
