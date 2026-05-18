@@ -24,3 +24,34 @@ ProyectoSemestral_2/
 │   └── outputs.tf            # Salidas importantes (Ej: IP Pública de acceso)
 ├── docker-compose.yml        # Orquestación para entorno de desarrollo local
 └── README.md
+🚀 Requisitos
+Terraform CLI versión >= 1.0
+
+AWS CLI configurado con credenciales de AWS Academy (Learner Lab)
+
+Variables de entorno/Secrets configurados en GitHub para las credenciales de AWS (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN).
+
+Docker y Docker Compose (para pruebas locales).
+
+⚙️ Flujo de Uso y Despliegue
+1. Despliegue de Infraestructura (AWS)
+Navega a la carpeta de infraestructura e inicializa Terraform:
+
+Bash
+cd infra
+terraform init
+terraform plan
+terraform apply -auto-approve
+Nota: Al finalizar el comando apply, la consola retornará la IP Pública para acceder al frontend de la aplicación.
+
+2. Ejecución del Pipeline (CI/CD)
+El despliegue de la aplicación está automatizado. Para actualizar los contenedores en la nube:
+
+Asegúrate de estar en la rama develop.
+
+Realiza un git push origin develop.
+
+GitHub Actions ejecutará automáticamente el flujo: Checkout del código -> Login en AWS ECR -> Build de imágenes Docker -> Push a repositorios ECR.
+
+📦 ¿Qué despliega este proyecto?
+Módulo de Red y Cómputo (AWS): Levanta la red virtual, los grupos de seguridad y los clústeres de ECS con perfiles de Fargate para ejecutar la aplicación de manera pública.
