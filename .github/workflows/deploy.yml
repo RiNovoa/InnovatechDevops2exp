@@ -33,7 +33,7 @@ jobs:
           ECR_REPOSITORY: innovatech-ep2-back-ventas
           IMAGE_TAG: latest
         run: |
-          cd backend/back-Ventas_SpringBoot
+          cd backend/back-Ventas_SpringBoot/Springboot-API-REST
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
@@ -44,6 +44,6 @@ jobs:
           ECR_REPOSITORY: innovatech-ep2-back-despachos
           IMAGE_TAG: latest
         run: |
-          cd backend/back-Despachos_SpringBoot
+          cd backend/back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
