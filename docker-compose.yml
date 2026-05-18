@@ -52,7 +52,7 @@ services:
 
   frontend:
     build:
-      context: ./front_despacho
+      context: ./frontend/front_despacho
       args:
         VITE_API_URL: http://back-despachos:8081   
     image: innovatech-frontend:1.0
