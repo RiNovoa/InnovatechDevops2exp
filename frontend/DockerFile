@@ -1,19 +1,25 @@
 # Etapa 1: Build
 FROM node:18-alpine AS builder
 WORKDIR /app
-# Copiar archivos de dependencias
+# Copiar solo los archivos de dependencias primero (mejor cache)
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --only=production
 # Copiar el resto del código
 COPY . .
-# Construir la aplicación (Vite genera en /dist)
+# Construir la aplicación
 RUN npm run build
 
-# Etapa 2: Servir con nginx
+# Etapa 2: Servir con nginx (usuario no root explícito)
 FROM nginx:alpine
-# Copiar los archivos estáticos generados
+# Eliminar archivos por defecto de nginx (seguridad)
+RUN rm -rf /usr/share/nginx/html/*
+# Copiar la build desde el builder
 COPY --from=builder /app/dist /usr/share/nginx/html
-# Exponer puerto 80
+# Asegurar que el usuario nginx tenga permisos
+RUN chown -R nginx:nginx /usr/share/nginx/html
+# Cambiar a usuario no root
+USER nginx
+# Exponer puerto
 EXPOSE 80
-# Nginx se ejecuta en foreground por defecto
+# Comando para iniciar nginx (foreground)
 CMD ["nginx", "-g", "daemon off;"]
