@@ -1,19 +1,24 @@
 # Etapa 1: Build
 FROM node:18-alpine AS builder
 WORKDIR /app
-# Copiar archivos de dependencias
+
+# Argumento para la URL del backend (valor por defecto para desarrollo local)
+ARG VITE_API_URL=http://localhost:8081
+ENV VITE_API_URL=$VITE_API_URL
+
+# Copiar dependencias
 COPY package*.json ./
-RUN npm ci
-# Copiar el resto del código
+RUN npm ci --only=production
+
+# Copiar el resto y construir
 COPY . .
-# Construir la aplicación (Vite genera en /dist)
 RUN npm run build
 
-# Etapa 2: Servir con nginx
+# Etapa 2: Servir con nginx (usuario no root)
 FROM nginx:alpine
-# Copiar los archivos estáticos generados
+RUN rm -rf /usr/share/nginx/html/*
 COPY --from=builder /app/dist /usr/share/nginx/html
-# Exponer puerto 80
+RUN chown -R nginx:nginx /usr/share/nginx/html
+USER nginx
 EXPOSE 80
-# Nginx se ejecuta en foreground por defecto
 CMD ["nginx", "-g", "daemon off;"]

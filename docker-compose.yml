@@ -51,7 +51,10 @@ services:
     restart: unless-stopped
 
   frontend:
-    build: ./frontend/front_despacho   # o la ruta real donde está el frontend
+    build:
+      context: ./front_despacho
+      args:
+        VITE_API_URL: http://back-despachos:8081   
     image: innovatech-frontend:1.0
     ports:
       - "3000:80"
