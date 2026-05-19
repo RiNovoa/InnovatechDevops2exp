@@ -26,23 +26,23 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
-      # 1. CONSTRUIR Y SUBIR BACK-VENTAS (Corregido con ruta backend/)
+      # 1. CONSTRUIR Y SUBIR BACK-VENTAS
       - name: Build y Push Back-Ventas
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: innovatech-ep2-backend
-          IMAGE_TAG: ventas
+          ECR_REPOSITORY: innovatech-ep2-back-ventas
+          IMAGE_TAG: latest
         run: |
           cd backend/back-Ventas_SpringBoot/Springboot-API-REST
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-      # 2. CONSTRUIR Y SUBIR BACK-DESPACHOS (Corregido con ruta backend/)
+      # 2. CONSTRUIR Y SUBIR BACK-DESPACHOS
       - name: Build y Push Back-Despachos
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: innovatech-ep2-backend
-          IMAGE_TAG: despachos
+          ECR_REPOSITORY: innovatech-ep2-back-despachos
+          IMAGE_TAG: latest
         run: |
           cd backend/back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
