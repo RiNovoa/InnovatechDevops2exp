@@ -108,6 +108,13 @@ resource "aws_security_group" "backend_sg" {
   }
 
   ingress {
+  from_port   = 8081
+  to_port     = 8081
+  protocol    = "tcp"
+  cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
@@ -227,7 +234,7 @@ resource "aws_ecs_task_definition" "app" {
 
     {
       name  = "backend"
-      image = "${aws_ecr_repository.backend.repository_url}:latest"
+      image = "${aws_ecr_repository.backend.repository_url}:ventas"
 
       portMappings = [
         {
@@ -259,6 +266,46 @@ resource "aws_ecs_task_definition" "app" {
         }
       }
     },
+  {
+    name  = "backend-despachos"
+    image = "${aws_ecr_repository.backend.repository_url}:despachos"
+
+    portMappings = [
+      {
+        containerPort = 8081
+      }
+    ]
+
+    environment = [
+      {
+        name  = "SERVER_PORT"
+        value = "8081"
+      },
+      {
+        name  = "SPRING_DATASOURCE_URL"
+        value = "jdbc:mysql://${aws_instance.backend.private_ip}:3306/test"
+      },
+      {
+        name  = "SPRING_DATASOURCE_USERNAME"
+        value = "root"
+      },
+      {
+        name  = "SPRING_DATASOURCE_PASSWORD"
+        value = "root"
+      }
+    ]
+
+    logConfiguration = {
+      logDriver = "awslogs",
+      options = {
+        awslogs-group         = aws_cloudwatch_log_group.ecs.name,
+        awslogs-region        = var.aws_region,
+        awslogs-stream-prefix = "despachos"
+      }
+    }
+  },
+
+
 
     {
       name  = "frontend"
