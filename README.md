@@ -1,57 +1,61 @@
-# Terraform AWS Infrastructure & CI/CD - Innovatech
+# AWS Infrastructure with Terraform & CI/CD - ECS Fargate (ProyectoSemestral2)
 
-## Descripción
-Infraestructura gestionada con Terraform y automatización de despliegue continuo (CI/CD) mediante GitHub Actions para el proyecto Innovatech. Este entorno despliega:
-* **Amazon ECR (Elastic Container Registry):** Repositorios privados para almacenar las imágenes Docker de los microservicios (Ventas y Despachos) y el Frontend.
-* **Amazon ECS con AWS Fargate:** Orquestación de contenedores sin servidor (Serverless) para ejecutar la aplicación con alta disponibilidad.
-* **Security Groups & Networking:** Configuración de reglas de firewall para permitir el tráfico HTTP/HTTPS y la comunicación interna entre microservicios.
-* **Pipeline CI/CD:** Flujo de GitHub Actions automatizado que construye las imágenes Docker desde el código fuente y las sube directamente a AWS al integrar cambios en la rama `develop`.
+## 📝 Descripción
+Este proyecto gestiona e implementa de forma automatizada la infraestructura en **Amazon Web Services (AWS)** utilizando **Terraform** como herramienta de Infraestructura como Código (IaC). La solución despliega un entorno de contenedores serverless de alta disponibilidad guiado bajo el modelo práctico del laboratorio `academia-304d`.
 
-## 🧭 Estructura del Proyecto
+A través de un pipeline automatizado en **GitHub Actions**, el código fuente se compila, genera imágenes Docker y las despliega directamente en AWS, otorgando una **IP pública estática** para el acceso directo al Frontend.
+
+---
+
+## 🧭 Estructura del Proyecto de Infraestructura
+
+La configuración de Terraform está dividida en dos etapas principales para respetar el ciclo de dependencias y las buenas prácticas enseñadas en clase:
 
 ```text
-ProyectoSemestral_2/
-├── .github/
-│   └── workflows/
-│       └── deploy.yml        # Pipeline de CI/CD para compilar y subir a ECR
-├── backend/
-│   ├── back-Ventas_SpringBoot/
-│   └── back-Despachos_SpringBoot/
-├── frontend/                 # Aplicación cliente web
-├── infra/                    # Código de Infraestructura como Código (IaC)
-│   ├── main.tf               # Definición de recursos AWS (ECS, ECR, SG)
-│   ├── variables.tf          # Variables de entorno para Terraform
-│   └── outputs.tf            # Salidas importantes (Ej: IP Pública de acceso)
-├── docker-compose.yml        # Orquestación para entorno de desarrollo local
-└── README.md
-🚀 Requisitos
-Terraform CLI versión >= 1.0
+infra/terraform/
+├── providers.tf            # Configuración de proveedores (AWS)
+├── variables.tf            # Variables globales del entorno
+├── ecr.tf                  # ETAPA 1: Registros privados de contenedores
+├── ecs.tf                  # ETAPA 2: Orquestación de clúster y servicios
+├── compute.tf              # ETAPA 2: Recursos de cómputo y perfiles de Fargate
+├── security.tf             # ETAPA 2: Reglas de firewall (Security Groups)
+└── outputs.tf              # Salidas del sistema (IP Pública del Frontend)
+🚀 Requisitos Previos
+Terraform CLI versión >= 1.0 instalado localmente.
 
-AWS CLI configurado con credenciales de AWS Academy (Learner Lab)
+AWS CLI configurado con las credenciales del ambiente de aprendizaje (AWS Academy Learner Lab).
 
-Variables de entorno/Secrets configurados en GitHub para las credenciales de AWS (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN).
+Tokens de sesión de AWS activos (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN).
 
-Docker y Docker Compose (para pruebas locales).
-
-⚙️ Flujo de Uso y Despliegue
-1. Despliegue de Infraestructura (AWS)
-Navega a la carpeta de infraestructura e inicializa Terraform:
+⚙️ Flujo de Uso y Despliegue (Paso a Paso)
+Paso 1: Inicialización del Entorno
+Navega a la carpeta de infraestructura e inicializa los plugins correspondientes de AWS:
 
 Bash
-cd infra
+cd infra/terraform
 terraform init
+Paso 2: Ejecución de la Etapa 1 (Creación de Repositorios)
+Se despliegan las bodegas de imágenes en Amazon ECR mediante la validación previa del plan:
+
+Bash
 terraform plan
 terraform apply -auto-approve
-Nota: Al finalizar el comando apply, la consola retornará la IP Pública para acceder al frontend de la aplicación.
+Nota: En este punto, los repositorios de ECR quedan listos para recibir las imágenes generadas por el pipeline de integración continua (deploy.yml).
 
-2. Ejecución del Pipeline (CI/CD)
-El despliegue de la aplicación está automatizado. Para actualizar los contenedores en la nube:
+Paso 3: Despliegue de la Aplicación en ECS (Etapa 2)
+Una vez que el pipeline ha subido las imágenes a ECR con la etiqueta latest, Terraform aprovisiona de forma automática los servicios Serverless:
 
-Asegúrate de estar en la rama develop.
+Crea el clúster en Amazon ECS.
 
-Realiza un git push origin develop.
+Configura la tarea con AWS Fargate definiendo los límites de CPU y Memoria (vCPU / GiB).
 
-GitHub Actions ejecutará automáticamente el flujo: Checkout del código -> Login en AWS ECR -> Build de imágenes Docker -> Push a repositorios ECR.
+Expone la IP Pública de salida en la consola de comandos.
 
 📦 ¿Qué despliega este proyecto?
-Módulo de Red y Cómputo (AWS): Levanta la red virtual, los grupos de seguridad y los clústeres de ECS con perfiles de Fargate para ejecutar la aplicación de manera pública.
+Amazon ECR (Elastic Container Registry): Tres repositorios independientes para almacenar de manera segura las imágenes Docker de back-ventas, back-despachos y el frontend.
+
+Amazon ECS (Elastic Container Service): Clúster lógico para administrar el ciclo de vida de los microservicios sin necesidad de gestionar servidores físicos (Serverless).
+
+AWS Fargate Tasks: Definiciones de tareas ejecutando las imágenes Docker de la aplicación.
+
+Security Groups (Firewall): Reglas de entrada que habilitan el tráfico por el puerto HTTP estipulado para la correcta visualización de la interfaz en internet.
