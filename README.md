@@ -1,216 +1,207 @@
-AWS Infrastructure with Terraform & CI/CD - ECS Fargate (ProyectoSemestral2)
-📝 Descripción
 
-Este proyecto implementa una infraestructura automatizada en Amazon Web Services (AWS) utilizando Terraform como herramienta de Infraestructura como Código (IaC).
 
-La solución despliega una arquitectura basada en contenedores utilizando Amazon ECS con AWS Fargate, siguiendo el enfoque práctico trabajado en laboratorio y clases.
 
-La infraestructura permite ejecutar:
+# AWS Infrastructure with Terraform & CI/CD - ECS Fargate (ProyectoSemestral2)
 
-Frontend en contenedor Docker
-Backend de Ventas (Spring Boot)
-Backend de Despachos (Spring Boot)
-Base de datos MariaDB en EC2
-Integración continua y despliegue continuo (CI/CD) con GitHub Actions
+## 📝 Descripción
 
-El sistema utiliza Amazon ECR para almacenar las imágenes Docker y CloudWatch Logs para centralizar los registros de ejecución de los contenedores.
+Este proyecto implementa una infraestructura automatizada en Amazon Web Services (AWS) utilizando **Terraform** como herramienta de Infraestructura como Código (IaC). 
 
-🧭 Estructura del Proyecto
+La solución despliega una arquitectura robusta basada en contenedores utilizando **Amazon ECS con AWS Fargate**, siguiendo un enfoque práctico de arquitectura serverless y microservicios.
+
+> 💡 **Nota:** Este proyecto centraliza el almacenamiento de imágenes mediante **Amazon ECR** y gestiona la observabilidad a través de **AWS CloudWatch Logs**.
+
+---
+
+## 🧭 Estructura del Proyecto
+
+```text
 infra/terraform/
-├── main.tf                 # Infraestructura principal AWS
-├── variables.tf            # Variables globales
-├── outputs.tf              # Salidas del sistema
-├── terraform.tfvars        # Variables de entorno
-└── README.md
-🚀 Requisitos Previos
+├── main.tf            # Infraestructura principal AWS
+├── variables.tf       # Variables globales
+├── outputs.tf         # Salidas del sistema
+├── terraform.tfvars   # Variables de entorno de Terraform
+└── README.md          # Documentación del proyecto
 
-Antes de ejecutar el proyecto se requiere:
+```
 
-Terraform CLI >= 1.0
-AWS CLI configurado
-Docker Desktop instalado
-Cuenta AWS Academy Learner Lab activa
-GitHub Actions habilitado
-Credenciales temporales AWS:
-AWS_ACCESS_KEY_ID
-AWS_SECRET_ACCESS_KEY
-AWS_SESSION_TOKEN
-⚙️ Arquitectura Implementada
+---
 
-La infraestructura despliega:
+## 🚀 Requisitos Previos
 
-🔹 Red AWS
-VPC personalizada
-Subred pública
-Subred privada
-Internet Gateway
-NAT Gateway
-Tablas de ruteo públicas y privadas
-🔹 Seguridad
+Antes de ejecutar el proyecto, asegúrate de contar con lo siguiente:
 
-Security Groups para:
+* **Terraform CLI** (versión `>= 1.0`)
+* **AWS CLI** configurado localmente
+* **Docker Desktop** instalado y en ejecución
+* Cuenta de **AWS Academy Learner Lab** activa
+* **GitHub Actions** habilitado en el repositorio
 
-Frontend HTTP (Puerto 80)
-Backend Ventas (Puerto 8080)
-Backend Despachos (Puerto 8081)
-Base de datos MariaDB (Puerto 3306)
-SSH (Puerto 22)
-🔹 Servicios desplegados
-Amazon ECS + Fargate
+### 🔑 Credenciales Temporales de AWS
 
-Se ejecutan tres contenedores:
+Asegúrate de exportar tus credenciales en tu terminal antes de interactuar con Terraform:
 
-Servicio	Puerto
-Frontend	80
-Backend Ventas	8080
-Backend Despachos	8081
-🔹 Amazon ECR
+```bash
+export AWS_ACCESS_KEY_ID="tu_access_key"
+export AWS_SECRET_ACCESS_KEY="tu_secret_key"
+export AWS_SESSION_TOKEN="tu_session_token"
 
-Repositorios privados para:
+```
 
-Frontend
-Backend Ventas
-Backend Despachos
-🔹 EC2 + MariaDB
+---
 
-Instancia EC2 utilizada para:
+## ⚙️ Arquitectura Implementada
 
-Ejecutar MariaDB
-Centralizar la base de datos utilizada por ambos microservicios
-🔹 CloudWatch Logs
+### 🔹 Red y Conectividad (VPC)
 
-Logs centralizados para:
+* VPC personalizada.
+* Subredes públicas y privadas distribuidas estratégicamente.
+* **Internet Gateway** y **NAT Gateway** para la salida controlada a internet.
+* Tablas de ruteo configuradas de forma aislada.
 
-Frontend
-Backend Ventas
-Backend Despachos
-⚙️ Flujo de Uso y Despliegue
-Paso 1: Clonar repositorio
-git clone <repositorio>
+### 🔹 Capa de Seguridad (Security Groups)
+
+Se definieron políticas de tráfico restrictivas para los siguientes componentes:
+
+* **Frontend:** Acceso HTTP público (Puerto `80`).
+* **Backend Ventas:** Puerto `8080`.
+* **Backend Despachos:** Puerto `8081`.
+* **Base de datos MariaDB:** Puerto `3306` (restringido a los microservicios).
+* **Acceso SSH:** Puerto `22`.
+
+### 🔹 Servicios Desplegados y Orquestación
+
+#### Amazon ECS + Fargate
+
+Orquestación de tres microservicios principales en modalidad Serverless:
+
+| Servicio | Puerto | Tipo | Tecnología Base |
+| --- | --- | --- | --- |
+| **Frontend** | `80` | Capa Pública / Web | Nginx + Vite + React |
+| **Backend Ventas** | `8080` | Capa Privada / API | Spring Boot |
+| **Backend Despachos** | `8081` | Capa Privada / API | Spring Boot |
+
+#### Amazon ECR (Elastic Container Registry)
+
+Repositorios privados dedicados para el almacenamiento seguro de las imágenes Docker de cada servicio:
+
+* `innovatech-ep2-frontend`
+* `innovatech-ep2-back-ventas`
+* `innovatech-ep2-back-despachos`
+
+#### Almacenamiento de Datos (EC2 + MariaDB)
+
+* Instancia **AWS EC2** configurada para ejecutar un servidor **MariaDB 10.5**.
+* Centraliza y provee persistencia de datos para ambos microservicios.
+* Configuración automatizada en el arranque mediante scripts en `user_data`.
+
+---
+
+## 🔄 Pipeline CI/CD con GitHub Actions
+
+El proyecto automatiza la integración y el despliegue continuo mediante un flujo de trabajo configurado en `.github/workflows/deploy.yml`.
+
+### Flujo Automatizado de Despliegue
+
+Al realizar un `push` a la rama **`deploy`**, el pipeline ejecuta las siguientes acciones de forma secuencial:
+
+1. **Backend Ventas:** Construcción de la imagen Docker y subida al repositorio `innovatech-ep2-back-ventas`.
+2. **Backend Despachos:** Construcción de la imagen Docker y subida al repositorio `innovatech-ep2-back-despachos`.
+3. **Frontend:** Empaquetado de la aplicación e inyección hacia `innovatech-ep2-frontend`.
+
+---
+
+## 🛠️ Guía de Uso y Despliegue Local
+
+Sigue estos pasos para desplegar la infraestructura en tu cuenta de AWS:
+
+### Paso 1: Clonar el repositorio
+
+```bash
+git clone <url-del-repositorio>
 cd infra/terraform
-Paso 2: Inicializar Terraform
+
+```
+
+### Paso 2: Inicializar el entorno de Terraform
+
+Descarga los proveedores necesarios (AWS) y configura el backend:
+
+```bash
 terraform init
-Paso 3: Revisar infraestructura
+
+```
+
+### Paso 3: Validar y Planificar
+
+Revisa el plan de ejecución para verificar qué recursos se crearán:
+
+```bash
 terraform plan
-Paso 4: Crear infraestructura AWS
+
+```
+
+### Paso 4: Aplicar Cambios
+
+Despliega toda la infraestructura en la nube (esto puede tomar un par de minutos):
+
+```bash
 terraform apply -auto-approve
 
-Terraform desplegará automáticamente:
+```
 
-VPC
-Subredes
-ECS Cluster
-ECS Service
-ECR Repositories
-Security Groups
-EC2 con MariaDB
-CloudWatch Logs
-🔄 Pipeline CI/CD con GitHub Actions
+---
 
-El proyecto utiliza GitHub Actions para automatizar:
+## 🗄️ Detalles Técnico de Componentes
 
-Construcción de imágenes Docker
-Push automático hacia Amazon ECR
-Actualización automática de ECS
-📁 Archivo deploy.yml
+### Persistencia de Datos
 
-Ubicación:
+La cadena de conexión compartida que utilizan los microservicios para interactuar con la base de datos es:
 
-.github/workflows/deploy.yml
-Flujo automatizado
-
-Cuando se realiza un push a la rama:
-
-deploy
-
-GitHub Actions ejecuta:
-
-Backend Ventas
-docker build
-docker push
-
-hacia:
-
-innovatech-ep2-back-ventas
-Backend Despachos
-docker build
-docker push
-
-hacia:
-
-innovatech-ep2-back-despachos
-Frontend
-
-Construcción y despliegue de la aplicación frontend hacia:
-
-innovatech-ep2-frontend
-📦 Contenedores Docker
-Frontend
-Vite + React
-Servido mediante Nginx
-Puerto 80
-Backend Ventas
-Spring Boot
-Puerto 8080
-Conexión MariaDB
-Backend Despachos
-Spring Boot
-Puerto 8081
-Conexión MariaDB
-🗄️ Base de Datos
-
-La base de datos MariaDB se ejecuta en EC2 mediante:
-
-mariadb105-server
-
-Configuración automática mediante user_data.
-
-La conexión utilizada por ambos backends es:
-
+```text
 jdbc:mysql://<PRIVATE_IP_EC2>:3306/test
-📊 Monitoreo
 
-Los logs de los contenedores se visualizan desde:
+```
 
-Amazon CloudWatch Logs
+### 📊 Monitoreo y Observabilidad
 
-Separados por:
+Los registros generados por los contenedores de ECS se centralizan en **Amazon CloudWatch Logs**, segmentados en tres grupos diferenciados para facilitar el troubleshooting:
 
-frontend
-backend
-despachos
-🌐 Acceso a la Aplicación
-Frontend
-http://35.173.193.214/
-Backend Ventas
-http://35.173.193.214:8080/
-Backend Despachos
-http://35.173.193.214:8081/
-📌 Buenas Prácticas Implementadas
-Infraestructura como Código con Terraform
-Separación de servicios mediante contenedores
-CI/CD automatizado
-Uso de ECS Fargate Serverless
-Logs centralizados con CloudWatch
-Imágenes privadas en Amazon ECR
-Variables reutilizables con Terraform
-🔧 Posibles Mejoras Futuras
-Incorporar Application Load Balancer (ALB)
-Implementar Auto Scaling
-Migrar MariaDB hacia Amazon RDS
-Agregar HTTPS con ACM
-Configurar dominios personalizados con Route53
-Implementar ECS Service Discovery
-Separar Frontend y Backends en servicios ECS independientes
-🧭 Tecnologías Utilizadas
-Tecnología	Uso
-Terraform	Infraestructura como Código
-AWS ECS	Orquestación de contenedores
-AWS Fargate	Ejecución Serverless
-AWS ECR	Registro de imágenes Docker
-AWS EC2	Base de datos MariaDB
-AWS CloudWatch	Logs y monitoreo
-Docker	Contenedores
-GitHub Actions	CI/CD
-Spring Boot	Backend
-React + Vite	Frontend
+* `/ecs/frontend`
+* `/ecs/backend-ventas`
+* `/ecs/backend-despachos`
+
+---
+
+## 🌐 Puntos de Acceso a la Aplicación
+
+Una vez desplegada la infraestructura, se puede acceder a los servicios mediante las siguientes URLs:
+
+* **Frontend:** `http://35.173.193.214/`
+* **Backend Ventas:** `http://35.173.193.214:8080/`
+* **Backend Despachos:** `http://35.173.193.214:8081/`
+
+---
+
+## 📌 Buenas Prácticas Implementadas
+
+* **Infraestructura como Código (IaC):** Modularización completa utilizando Terraform.
+* **Arquitectura Serverless:** Uso de AWS Fargate para eliminar la gestión operativa de servidores en los contenedores.
+* **Seguridad:** Aislamiento de redes y políticas estrictas con Grupos de Seguridad.
+* **Automatización:** Pipeline de CI/CD nativo con GitHub Actions sin intervención manual.
+* **Parametrización:** Uso de variables reutilizables mediante archivos `tfvars`.
+
+---
+
+## 🔧 Posibles Mejoras Futuras
+
+* [ ] Incorporar un **Application Load Balancer (ALB)** para distribuir la carga eficientemente.
+* [ ] Implementar políticas de **Auto Scaling** basadas en consumo de CPU/Memoria.
+* [ ] Migrar la base de datos MariaDB desde EC2 hacia un servicio gestionado como **Amazon RDS**.
+* [ ] Cifrar las conexiones utilizando **HTTPS** mediante AWS Certificate Manager (ACM).
+* [ ] Configurar nombres de dominio personalizados con **Amazon Route53**.
+* [ ] Implementar **AWS ECS Service Discovery** para la comunicación interna entre microservicios.
+
+```
+
+```
