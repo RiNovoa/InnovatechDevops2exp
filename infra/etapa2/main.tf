@@ -101,17 +101,38 @@ resource "aws_security_group" "backend_sg" {
   vpc_id = aws_vpc.main.id
 
   ingress {
-    from_port       = 8080
-    to_port         = 8080
-    protocol        = "tcp"
-    security_groups = [aws_security_group.frontend_sg.id] 
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
-  
+
+  ingress {
+  from_port   = 8081
+  to_port     = 8081
+  protocol    = "tcp"
+  cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   ingress {
     from_port       = 3306
     to_port         = 3306
     protocol        = "tcp"
-    self            = true # Permite que los contenedores en esta misma máquina hablen entre sí
+    self            = true
+  }
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
@@ -134,36 +155,15 @@ data "aws_ami" "amazon_linux" {
   }
 }
 
-# EC2 FRONTEND (Pública)
-resource "aws_instance" "frontend" {
-  ami                    = data.aws_ami.amazon_linux.id
-  instance_type          = "t2.micro"
-  subnet_id              = aws_subnet.public.id
-  vpc_security_group_ids = [aws_security_group.frontend_sg.id]
-  iam_instance_profile   = "LabInstanceProfile" 
-  key_name               = var.key_pair_name
-
-  user_data = <<-EOF
-    #!/bin/bash
-    yum update -y
-    yum install -y docker git
-    systemctl start docker
-    systemctl enable docker
-    curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-    chmod +x /usr/local/bin/docker-compose
-  EOF
-
-  tags = { Name = "EC2-Frontend" }
-}
-
 # EC2 BACKEND + DB (Privada)
 resource "aws_instance" "backend" {
   ami                    = data.aws_ami.amazon_linux.id
   instance_type          = "t2.micro"
-  subnet_id              = aws_subnet.private.id
+  subnet_id = aws_subnet.public.id
   vpc_security_group_ids = [aws_security_group.backend_sg.id]
   iam_instance_profile   = "LabInstanceProfile" 
   key_name               = var.key_pair_name
+  associate_public_ip_address = true
   
   root_block_device {
     volume_size = 20
@@ -171,14 +171,190 @@ resource "aws_instance" "backend" {
   }
 
   user_data = <<-EOF
-    #!/bin/bash
-    yum update -y
-    yum install -y docker git
-    systemctl start docker
-    systemctl enable docker
-    curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-    chmod +x /usr/local/bin/docker-compose
-  EOF
+  #!/bin/bash
+  yum update -y
+  yum install -y docker git mariadb105-server
+  systemctl start docker
+  systemctl enable docker
+  systemctl start mariadb
+  systemctl enable mariadb
+  mysql -e "CREATE DATABASE test;"
+  mysql -e "CREATE USER 'root'@'%' IDENTIFIED BY 'root';"
+  mysql -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;"
+  mysql -e "FLUSH PRIVILEGES;"
+  curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+  chmod +x /usr/local/bin/docker-compose
+EOF
 
   tags = { Name = "EC2-Backend" }
+}
+############################
+# ECR
+############################
+
+resource "aws_ecr_repository" "backend" {
+  name         = "${var.project_name}-backend"
+  force_delete = true
+}
+
+resource "aws_ecr_repository" "frontend" {
+  name         = "${var.project_name}-frontend"
+  force_delete = true
+}
+############################
+# CLOUD WATCH
+############################
+
+resource "aws_cloudwatch_log_group" "ecs" {
+  name              = "/ecs/${var.project_name}"
+  retention_in_days = 7
+}
+############################
+# ECS
+############################
+
+resource "aws_ecs_cluster" "main" {
+  name = "${var.project_name}-cluster"
+}
+
+
+data "aws_iam_role" "lab" {
+  name = "LabRole"
+}
+
+resource "aws_ecs_task_definition" "app" {
+  family                   = "${var.project_name}-app"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = "1024"
+  memory                   = "2048"
+  execution_role_arn       = data.aws_iam_role.lab.arn
+
+  container_definitions = jsonencode([
+
+    {
+      name  = "backend"
+      image = "${aws_ecr_repository.backend.repository_url}:ventas"
+
+      portMappings = [
+        {
+          containerPort = 8080
+        }
+      ]
+
+      environment = [
+        {
+          name  = "SPRING_DATASOURCE_URL"
+          value = "jdbc:mysql://${aws_instance.backend.private_ip}:3306/test"
+        },
+        {
+          name  = "SPRING_DATASOURCE_USERNAME"
+          value = "root"
+        },
+        {
+          name  = "SPRING_DATASOURCE_PASSWORD"
+          value = "root"
+        }
+      ]
+
+      logConfiguration = {
+        logDriver = "awslogs",
+        options = {
+          awslogs-group         = aws_cloudwatch_log_group.ecs.name,
+          awslogs-region        = var.aws_region,
+          awslogs-stream-prefix = "backend"
+        }
+      }
+    },
+  {
+    name  = "backend-despachos"
+    image = "${aws_ecr_repository.backend.repository_url}:despachos"
+
+    portMappings = [
+      {
+        containerPort = 8081
+      }
+    ]
+
+    environment = [
+      {
+        name  = "SERVER_PORT"
+        value = "8081"
+      },
+      {
+        name  = "SPRING_DATASOURCE_URL"
+        value = "jdbc:mysql://${aws_instance.backend.private_ip}:3306/test"
+      },
+      {
+        name  = "SPRING_DATASOURCE_USERNAME"
+        value = "root"
+      },
+      {
+        name  = "SPRING_DATASOURCE_PASSWORD"
+        value = "root"
+      }
+    ]
+
+    logConfiguration = {
+      logDriver = "awslogs",
+      options = {
+        awslogs-group         = aws_cloudwatch_log_group.ecs.name,
+        awslogs-region        = var.aws_region,
+        awslogs-stream-prefix = "despachos"
+      }
+    }
+  },
+
+
+
+    {
+      name  = "frontend"
+      image = "${aws_ecr_repository.frontend.repository_url}:latest"
+
+      portMappings = [
+        {
+          containerPort = 80
+        }
+      ]
+
+      dependsOn = [
+        {
+          containerName = "backend",
+          condition = "START"
+        }
+      ]
+
+      logConfiguration = {
+        logDriver = "awslogs",
+        options = {
+          awslogs-group         = aws_cloudwatch_log_group.ecs.name,
+          awslogs-region        = var.aws_region,
+          awslogs-stream-prefix = "frontend"
+        }
+      }
+    }
+
+  ])
+}
+############################
+# SERVICE
+############################
+
+resource "aws_ecs_service" "app" {
+  name            = "app"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.app.arn
+  launch_type     = "FARGATE"
+  desired_count   = 1
+
+  force_new_deployment = true
+
+  deployment_minimum_healthy_percent = 0
+  deployment_maximum_percent         = 100
+
+  network_configuration {
+    subnets          = [aws_subnet.public.id]
+    security_groups  = [aws_security_group.backend_sg.id]
+    assign_public_ip = true
+  }
 }
