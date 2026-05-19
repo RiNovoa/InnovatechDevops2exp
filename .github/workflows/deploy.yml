@@ -30,8 +30,8 @@ jobs:
       - name: Build y Push Back-Ventas
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: innovatech-ep2-back-ventas
-          IMAGE_TAG: latest
+          ECR_REPOSITORY: innovatech-ep2-backend
+          IMAGE_TAG: ventas
         run: |
           cd backend/back-Ventas_SpringBoot/Springboot-API-REST
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
@@ -41,8 +41,8 @@ jobs:
       - name: Build y Push Back-Despachos
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: innovatech-ep2-back-despachos
-          IMAGE_TAG: latest
+          ECR_REPOSITORY: innovatech-ep2-backend
+          IMAGE_TAG: despachos
         run: |
           cd backend/back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
