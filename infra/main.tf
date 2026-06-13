@@ -188,6 +188,13 @@ EOF
 
   tags = { Name = "EC2-Backend" }
 }
+
+# Pausa de 3 minutos para que MariaDB termine de instalarse
+resource "time_sleep" "wait_for_db" {
+  depends_on      = [aws_instance.backend]
+  create_duration = "3m"
+}
+
 ############################
 # ECR
 ############################
@@ -201,6 +208,7 @@ resource "aws_ecr_repository" "frontend" {
   name         = "${var.project_name}-frontend"
   force_delete = true
 }
+
 ############################
 # CLOUD WATCH
 ############################
@@ -209,6 +217,7 @@ resource "aws_cloudwatch_log_group" "ecs" {
   name              = "/ecs/${var.project_name}"
   retention_in_days = 7
 }
+
 ############################
 # ECS
 ############################
@@ -216,7 +225,6 @@ resource "aws_cloudwatch_log_group" "ecs" {
 resource "aws_ecs_cluster" "main" {
   name = "${var.project_name}-cluster"
 }
-
 
 data "aws_iam_role" "lab" {
   name = "LabRole"
@@ -231,7 +239,6 @@ resource "aws_ecs_task_definition" "app" {
   execution_role_arn       = data.aws_iam_role.lab.arn
 
   container_definitions = jsonencode([
-
     {
       name  = "backend"
       image = "${aws_ecr_repository.backend.repository_url}:ventas"
@@ -266,47 +273,44 @@ resource "aws_ecs_task_definition" "app" {
         }
       }
     },
-  {
-    name  = "backend-despachos"
-    image = "${aws_ecr_repository.backend.repository_url}:despachos"
+    {
+      name  = "backend-despachos"
+      image = "${aws_ecr_repository.backend.repository_url}:despachos"
 
-    portMappings = [
-      {
-        containerPort = 8081
+      portMappings = [
+        {
+          containerPort = 8081
+        }
+      ]
+
+      environment = [
+        {
+          name  = "SERVER_PORT"
+          value = "8081"
+        },
+        {
+          name  = "SPRING_DATASOURCE_URL"
+          value = "jdbc:mysql://${aws_instance.backend.private_ip}:3306/test"
+        },
+        {
+          name  = "SPRING_DATASOURCE_USERNAME"
+          value = "root"
+        },
+        {
+          name  = "SPRING_DATASOURCE_PASSWORD"
+          value = "root"
+        }
+      ]
+
+      logConfiguration = {
+        logDriver = "awslogs",
+        options = {
+          awslogs-group         = aws_cloudwatch_log_group.ecs.name,
+          awslogs-region        = var.aws_region,
+          awslogs-stream-prefix = "despachos"
+        }
       }
-    ]
-
-    environment = [
-      {
-        name  = "SERVER_PORT"
-        value = "8081"
-      },
-      {
-        name  = "SPRING_DATASOURCE_URL"
-        value = "jdbc:mysql://${aws_instance.backend.private_ip}:3306/test"
-      },
-      {
-        name  = "SPRING_DATASOURCE_USERNAME"
-        value = "root"
-      },
-      {
-        name  = "SPRING_DATASOURCE_PASSWORD"
-        value = "root"
-      }
-    ]
-
-    logConfiguration = {
-      logDriver = "awslogs",
-      options = {
-        awslogs-group         = aws_cloudwatch_log_group.ecs.name,
-        awslogs-region        = var.aws_region,
-        awslogs-stream-prefix = "despachos"
-      }
-    }
-  },
-
-
-
+    },
     {
       name  = "frontend"
       image = "${aws_ecr_repository.frontend.repository_url}:latest"
@@ -314,6 +318,17 @@ resource "aws_ecs_task_definition" "app" {
       portMappings = [
         {
           containerPort = 80
+        }
+      ]
+
+      environment = [
+        {
+          name  = "REACT_APP_BACKEND_URL" 
+          value = "http://localhost:8080"
+        },
+        {
+          name  = "REACT_APP_DESPACHOS_URL"
+          value = "http://localhost:8081"
         }
       ]
 
@@ -333,9 +348,9 @@ resource "aws_ecs_task_definition" "app" {
         }
       }
     }
-
   ])
 }
+
 ############################
 # SERVICE
 ############################
@@ -348,6 +363,9 @@ resource "aws_ecs_service" "app" {
   desired_count   = 1
 
   force_new_deployment = true
+
+  # Obliga al servicio a esperar la pausa
+  depends_on = [time_sleep.wait_for_db]
 
   deployment_minimum_healthy_percent = 0
   deployment_maximum_percent         = 100

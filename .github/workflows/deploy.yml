@@ -6,8 +6,8 @@ on:
       - deploy
 
 jobs:
-  build-and-push:
-    name: Construir y Subir a ECR
+  build-push-deploy:
+    name: Construir, Subir a ECR y Desplegar
     runs-on: ubuntu-latest
 
     steps:
@@ -26,12 +26,12 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
-      # 1. CONSTRUIR Y SUBIR BACK-VENTAS
+# 1. CONSTRUIR Y SUBIR BACK-VENTAS
       - name: Build y Push Back-Ventas
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: innovatech-ep2-back-ventas
-          IMAGE_TAG: latest
+          ECR_REPOSITORY: innovatech-ep2-backend
+          IMAGE_TAG: ventas 
         run: |
           cd backend/back-Ventas_SpringBoot/Springboot-API-REST
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
@@ -41,9 +41,24 @@ jobs:
       - name: Build y Push Back-Despachos
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: innovatech-ep2-back-despachos
-          IMAGE_TAG: latest
+          ECR_REPOSITORY: innovatech-ep2-backend
+          IMAGE_TAG: despachos 
         run: |
           cd backend/back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      # 3. CONSTRUIR Y SUBIR FRONTEND (¡Lo que faltaba!)
+      - name: Build y Push Frontend
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: innovatech-ep2-frontend
+          IMAGE_TAG: latest
+        run: |
+          cd frontend # Asegúrate de que esta sea la ruta real a tu carpeta Frontend
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+    # 4. DESPLIEGUE EN ECS (El paso clave del CD)
+      - name: Forzar nuevo despliegue en ECS
+        run: |
+          aws ecs update-service --cluster innovatech-ep2-cluster --service app --force-new-deployment
