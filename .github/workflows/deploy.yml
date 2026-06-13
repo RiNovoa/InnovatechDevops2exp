@@ -48,14 +48,14 @@ jobs:
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-      # 3. CONSTRUIR Y SUBIR FRONTEND (¡Lo que faltaba!)
+# 3. CONSTRUIR Y SUBIR FRONTEND
       - name: Build y Push Frontend
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: innovatech-ep2-frontend
           IMAGE_TAG: latest
         run: |
-          cd frontend # Asegúrate de que esta sea la ruta real a tu carpeta Frontend
+          cd frontend/front_despacho # <--- ¡Aquí está la corrección de la ruta!
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
     # 4. DESPLIEGUE EN ECS (El paso clave del CD)
